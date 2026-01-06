@@ -1,0 +1,21 @@
+# Build
+build/
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.lib
+
+# Artifacts
+*.asm
+*.s
+*.o
+*.txt
+
+# Editor
+.vs/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc

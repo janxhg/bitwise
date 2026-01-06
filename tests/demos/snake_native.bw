@@ -1,0 +1,42 @@
+packed struct HardwareInfo {
+    v_addr: i32;
+    v_data: i32;
+    input: i32;
+}
+
+fn main() -> i32 {
+    let hw = 0x3C00;
+    
+    // Snake start
+    let x = 64;
+    let y = 32;
+    
+    while 1 {
+        // Read Controller
+        let key = hw.input;
+        
+        // Wipe old pixel (optional, for trail)
+        // hw.v_addr = 0x4000 + (y * 128) + x;
+        // hw.v_data = 0;
+
+        // Move logic
+        if key == 1 { y = y - 1; }
+        if key == 2 { y = y + 1; }
+        if key == 3 { x = x - 1; }
+        if key == 4 { x = x + 1; }
+        
+        // Render new pixel
+        let row_off = y * 128;
+        let addr = 0x4000 + row_off + x;
+        hw.v_addr = addr;
+        hw.v_data = 1;
+        
+        // Delay (Emulated Clock)
+        let delay = 0;
+        while delay < 2000 {
+            delay = delay + 1;
+        }
+    }
+    
+    return 0;
+}

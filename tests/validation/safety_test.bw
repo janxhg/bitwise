@@ -1,0 +1,10 @@
+fn main() -> i32 {
+    linear let sensor_data = 100;
+    
+    region sram_fast {
+        let x = sensor_data; // Moves sensor_data
+        let y = sensor_data; // This should be an error (Use after move)
+    }
+
+    return 0;
+}

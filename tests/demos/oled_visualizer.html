@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitwise Hardware Visualizer - Snake Edition</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --panel: #161b22;
+            --accent: #58a6ff;
+            --oled-bg: #000;
+            --oled-pixel: #afffff;
+            --snake-head: #afffff;
+            --food: #ff7b72;
+        }
+
+        body {
+            background: var(--bg);
+            color: #c9d1d9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            background: var(--panel);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 95vw;
+        }
+
+        .screen-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        canvas {
+            background: var(--oled-bg);
+            border: 4px solid #333;
+            border-radius: 4px;
+            box-shadow: 0 0 15px rgba(175, 255, 255, 0.3);
+            width: 512px;
+            height: 256px;
+            image-rendering: pixelated;
+        }
+
+        .stats {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .stat-card {
+            background: #21262d;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .label {
+            font-size: 0.75em;
+            color: #8b949e;
+            text-transform: uppercase;
+        }
+
+        .value {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.1em;
+            color: #fff;
+            margin-top: 3px;
+        }
+
+        .code-view {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 900px;
+            background: #000;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #d1d1d1;
+            border: 1px solid #333;
+            height: 150px;
+            overflow-y: auto;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            background: #79c0ff;
+        }
+
+        .controls-hint {
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #8b949e;
+        }
+
+        .score {
+            font-size: 1.5em;
+            color: var(--accent);
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Bitwise Snake Emulator</h1>
+    <p>Hardware-Accelerated Bitwise Logic Test</p>
+
+    <div class="container">
+        <div class="screen-area">
+            <canvas id="oled" width="128" height="64"></canvas>
+            <div id="game-overlay"
+                style="display:none; position: absolute; color: white; background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px; text-align: center;">
+                <h2>GAME OVER</h2>
+                <button class="btn" onclick="startGame()">Restart</button>
+            </div>
+            <button id="start-btn" class="btn" onclick="startGame()">Start Game</button>
+            <div class="controls-hint">Use Arrow Keys to Navigate</div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="label">Score</div>
+                <div id="score" class="score">00</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">MMIO Controller</div>
+                <div class="value">0x3C00.data</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Snake Head (X, Y)</div>
+                <div id="coords" class="value">-- , --</div>
+            </div>
+            <div id="volatile-status" class="stat-card">
+                <div class="label">Last Volatile Write</div>
+                <div id="last-write" class="value">BOOTING...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="code-view">
+        <pre id="console">> Bitwise Runtime Initialized...
+> Loaded module: tests/snake_driver.bw
+> Registers mapped to 0x3C00
+> Waiting for user input...</pre>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('oled');
+        const ctx = canvas.getContext('2d');
+        const log = document.getElementById('console');
+        const scoreEl = document.getElementById('score');
+        const coordsEl = document.getElementById('coords');
+        const lastWriteEl = document.getElementById('last-write');
+        const volatileCard = document.getElementById('volatile-status');
+
+        const GRID_SIZE = 4;
+        const WIDTH = 128 / GRID_SIZE;
+        const HEIGHT = 64 / GRID_SIZE;
+
+        let snake = [];
+        let food = { x: 10, y: 10 };
+        let direction = 'RIGHT';
+        let nextDirection = 'RIGHT';
+        let score = 0;
+        let gameLoop = null;
+        let speed = 100;
+
+        function appendLog(msg) {
+            log.innerText += '\n' + msg;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateVolatile(val) {
+            lastWriteEl.innerText = val;
+            volatileCard.style.borderLeftColor = "#afffff";
+            setTimeout(() => { volatileCard.style.borderLeftColor = "#58a6ff"; }, 100);
+        }
+
+        function draw() {
+            // Clear Screen (Volatile Command 0xAE -> 0xAF)
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, 128, 64);
+
+            // Draw Food (MMIO Write)
+            ctx.fillStyle = '#ff7b72';
+            ctx.fillRect(food.x * GRID_SIZE, food.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+
+            // Draw Snake (Sequential MMIO Writes)
+            ctx.fillStyle = '#afffff';
+            snake.forEach((part, index) => {
+                ctx.fillRect(part.x * GRID_SIZE, part.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+            });
+        }
+
+        function moveSnake() {
+            direction = nextDirection;
+            const head = { ...snake[0] };
+
+            if (direction === 'RIGHT') head.x++;
+            else if (direction === 'LEFT') head.x--;
+            else if (direction === 'UP') head.y--;
+            else if (direction === 'DOWN') head.y++;
+
+            // Update Hardware Stats
+            coordsEl.innerText = `${head.x} , ${head.y}`;
+            updateVolatile(`STR [0x3C04], ${head.x}`);
+
+            // Collision with walls
+            if (head.x < 0 || head.x >= WIDTH || head.y < 0 || head.y >= HEIGHT) return gameOver();
+
+            // Collision with self
+            if (snake.some(part => part.x === head.x && part.y === head.y)) return gameOver();
+
+            snake.unshift(head);
+
+            // Check if food eaten
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                scoreEl.innerText = score.toString().padStart(2, '0');
+                spawnFood();
+                appendLog(`> Linear Type [Food] consumed. New allocation at memory shift.`);
+                speed = Math.max(50, speed - 2);
+                clearInterval(gameLoop);
+                gameLoop = setInterval(update, speed);
+            } else {
+                snake.pop();
+            }
+        }
+
+        function spawnFood() {
+            food = {
+                x: Math.floor(Math.random() * WIDTH),
+                y: Math.floor(Math.random() * HEIGHT)
+            };
+        }
+
+        function update() {
+            moveSnake();
+            draw();
+        }
+
+        function startGame() {
+            appendLog("> Initializing game state...");
+            appendLog("> Mapping Snake body to Region [SRAM_FAST]");
+            document.getElementById('game-overlay').style.display = 'none';
+            document.getElementById('start-btn').style.display = 'none';
+            snake = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
+            direction = 'RIGHT';
+            nextDirection = 'RIGHT';
+            score = 0;
+            speed = 100;
+            scoreEl.innerText = "00";
+            spawnFood();
+
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(update, speed);
+        }
+
+        function gameOver() {
+            clearInterval(gameLoop);
+            document.getElementById('game-overlay').style.display = 'block';
+            document.getElementById('start-btn').style.display = 'block';
+            appendLog("> FATAL: Hardware collision detected.");
+            appendLog("> Memory dump: STACK OVERFLOW at tail pointer.");
+            updateVolatile("SYSTEM_HALT");
+        }
+
+        window.addEventListener('keydown', e => {
+            switch (e.key) {
+                case 'ArrowUp': if (direction !== 'DOWN') nextDirection = 'UP'; break;
+                case 'ArrowDown': if (direction !== 'UP') nextDirection = 'DOWN'; break;
+                case 'ArrowLeft': if (direction !== 'RIGHT') nextDirection = 'LEFT'; break;
+                case 'ArrowRight': if (direction !== 'LEFT') nextDirection = 'RIGHT'; break;
+            }
+        });
+
+        draw(); // Initial draw
+    </script>
+</body>
+
+</html>

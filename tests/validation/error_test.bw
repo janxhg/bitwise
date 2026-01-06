@@ -1,0 +1,6 @@
+fn main() -> i32 {
+    linear let bateria = 100;
+    let x = bateria; // Aquí la batería se "consume" (se mueve a x)
+    let y = bateria; // ¡ERROR! La batería ya no está disponible
+    return 0;
+}
