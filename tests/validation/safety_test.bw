@@ -1,3 +1,4 @@
+// EXPECT_ERROR
 fn main() -> i32 {
     linear let sensor_data = 100;
     

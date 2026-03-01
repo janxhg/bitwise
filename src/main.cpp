@@ -9,9 +9,10 @@
 #include "bitwise/arm_backend.hpp"
 #include "bitwise/diagnostic.hpp"
 #include "bitwise/file_utils.hpp"
+#include "bitwise/version.hpp"
 
 void print_version() {
-    std::cout << "Bitwise Compiler (bwc) v0.1.0\n";
+    std::cout << "Bitwise Compiler (bwc) v" << BITWISE_VERSION_STR << "\n";
     std::cout << "Target Hardware: Edge & Micro-sensors (<1MB RAM)\n";
 }
 
@@ -72,7 +73,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "[INFO] Semantic analysis complete. Program is memory-safe.\n";
             
             std::cerr << "[INFO] Generating BIR (Intermediate Representation)...\n";
-            bitwise::bir::BIRGenerator bir_gen;
+            bitwise::bir::BIRGenerator bir_gen(&diags);
             auto bir_module = bir_gen.generate(*program);
             
             std::cerr << "[INFO] BIR Generation complete. Function count: " << bir_module->functions.size() << "\n";

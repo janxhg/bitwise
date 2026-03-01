@@ -10,7 +10,9 @@ build/
 *.asm
 *.s
 *.o
-*.txt
+
+# Exclude specific files from ignore if needed
+!CMakeLists.txt
 
 # Editor
 .vs/

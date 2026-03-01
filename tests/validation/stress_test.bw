@@ -1,3 +1,4 @@
+// EXPECT_ERROR
 packed struct Sensor {
     id: i32;
     val: i32;

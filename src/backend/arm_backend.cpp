@@ -105,17 +105,101 @@ void ArmBackend::emit_instruction(const bitwise::bir::Instruction& inst, std::os
             out << "SUBS " << get_dest() << ", " << get_op(0) << ", " << get_op(1) << "\n";
             break;
             
+        case bitwise::bir::OpCode::Mul:
+            out << "MULS " << get_dest() << ", " << get_op(0) << ", " << get_op(1) << "\n";
+            break;
+            
+        case bitwise::bir::OpCode::Div:
+            // ARM doesn't have native division, would need runtime
+            out << "; DIV operation requires runtime library\n";
+            out << "BL __divsi3\n";
+            break;
+            
+        case bitwise::bir::OpCode::Mod:
+            out << "; MOD operation requires runtime library\n";
+            out << "BL __modsi3\n";
+            break;
+            
+        case bitwise::bir::OpCode::BitAnd:
+            out << "AND " << get_dest() << ", " << get_op(0) << ", " << get_op(1) << "\n";
+            break;
+            
+        case bitwise::bir::OpCode::BitOr:
+            out << "ORR " << get_dest() << ", " << get_op(0) << ", " << get_op(1) << "\n";
+            break;
+            
+        case bitwise::bir::OpCode::BitXor:
+            out << "EOR " << get_dest() << ", " << get_op(0) << ", " << get_op(1) << "\n";
+            break;
+            
+        case bitwise::bir::OpCode::BitNot:
+            out << "MVN " << get_dest() << ", " << get_op(0) << "\n";
+            break;
+            
+        case bitwise::bir::OpCode::Neg:
+            out << "RSBS " << get_dest() << ", " << get_op(0) << ", #0\n";
+            break;
+            
+        case bitwise::bir::OpCode::Not:
+            // Logical NOT: compare with 0, set to 1 if zero, 0 otherwise
+            out << "CMP " << get_op(0) << ", #0\n";
+            out << "ITE EQ\n";
+            out << "MOVEQ " << get_dest() << ", #1\n";
+            out << "MOVNE " << get_dest() << ", #0\n";
+            break;
+            
+        case bitwise::bir::OpCode::ShiftLeft:
+            out << "LSL " << get_dest() << ", " << get_op(0) << ", " << get_op(1) << "\n";
+            break;
+            
+        case bitwise::bir::OpCode::ShiftRight:
+            out << "ASR " << get_dest() << ", " << get_op(0) << ", " << get_op(1) << "\n";
+            break;
+            
         case bitwise::bir::OpCode::CmpEQ:
         case bitwise::bir::OpCode::CmpNE:
         case bitwise::bir::OpCode::CmpLT:
         case bitwise::bir::OpCode::CmpGT:
-             // Implementing boolean set is tricky in Thumb-2 without IT blocks or conditional movs
-             // We will do a CMP and then simple branching or conditional move if available (ARMv7E-M)
-             // Using "ITE" block for boolean result
+        case bitwise::bir::OpCode::CmpLE:
+        case bitwise::bir::OpCode::CmpGE:
+             // Proper implementation using ARM condition flags
              out << "CMP " << get_op(0) << ", " << get_op(1) << "\n";
-             out << "IT NE\n"; // Predicate
-             out << "MOVNE " << get_dest() << ", #1\n"; // Placeholder logic
-             out << "MOVEQ " << get_dest() << ", #0\n";
+             
+             // Use IT block for Thumb-2 conditional execution
+             switch (inst.opcode) {
+                 case bitwise::bir::OpCode::CmpEQ:
+                     out << "ITE EQ\n";
+                     out << "MOVEQ " << get_dest() << ", #1\n";
+                     out << "MOVNE " << get_dest() << ", #0\n";
+                     break;
+                 case bitwise::bir::OpCode::CmpNE:
+                     out << "ITE NE\n";
+                     out << "MOVNE " << get_dest() << ", #1\n";
+                     out << "MOVEQ " << get_dest() << ", #0\n";
+                     break;
+                 case bitwise::bir::OpCode::CmpLT:
+                     out << "ITE LT\n";
+                     out << "MOVLT " << get_dest() << ", #1\n";
+                     out << "MOVGE " << get_dest() << ", #0\n";
+                     break;
+                 case bitwise::bir::OpCode::CmpGT:
+                     out << "ITE GT\n";
+                     out << "MOVGT " << get_dest() << ", #1\n";
+                     out << "MOVLE " << get_dest() << ", #0\n";
+                     break;
+                 case bitwise::bir::OpCode::CmpLE:
+                     out << "ITE LE\n";
+                     out << "MOVLE " << get_dest() << ", #1\n";
+                     out << "MOVGT " << get_dest() << ", #0\n";
+                     break;
+                 case bitwise::bir::OpCode::CmpGE:
+                     out << "ITE GE\n";
+                     out << "MOVGE " << get_dest() << ", #1\n";
+                     out << "MOVLT " << get_dest() << ", #0\n";
+                     break;
+                 default:
+                     break;
+             }
              break;
              
         case bitwise::bir::OpCode::Br:

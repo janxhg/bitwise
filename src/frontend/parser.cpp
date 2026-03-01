@@ -10,8 +10,6 @@ std::unique_ptr<bitwise::ast::Program> Parser::parse() {
             program->functions.push_back(parse_function());
         } else if (match({TokenType::Packed})) {
             program->structs.push_back(parse_struct(true));
-        } else if (check(TokenType::Switch)) { // Switch is used for struct in this simple hack
-             program->structs.push_back(parse_struct(false));
         } else if (match({TokenType::Identifier}) && previous().lexeme == "struct") {
              program->structs.push_back(parse_struct(false));
         } else {
@@ -27,7 +25,21 @@ std::unique_ptr<bitwise::ast::FunctionDecl> Parser::parse_function() {
 
     consume(TokenType::OpenParen, "Expect '(' after function name.");
     std::vector<bitwise::ast::Parameter> params;
-    // Parameter parsing logic here in future
+    
+    // Parse parameter list
+    if (!check(TokenType::CloseParen)) {
+        do {
+            bool is_linear = false;
+            if (match({TokenType::Linear})) {
+                is_linear = true;
+            }
+            const Token& param_name = consume(TokenType::Identifier, "Expect parameter name.");
+            consume(TokenType::Colon, "Expect ':' after parameter name.");
+            const Token& param_type = consume(TokenType::Identifier, "Expect parameter type.");
+            params.push_back({param_name.lexeme, param_type.lexeme, is_linear});
+        } while (match({TokenType::Comma}));
+    }
+    
     consume(TokenType::CloseParen, "Expect ')' after parameters.");
 
     std::string return_type = "void";
@@ -99,7 +111,7 @@ std::unique_ptr<bitwise::ast::Stmt> Parser::parse_statement() {
             return std::make_unique<bitwise::ast::AssignmentStmt>(std::move(lhs), std::move(rhs));
         }
         consume(TokenType::Semicolon, "Expect ';' after expression.");
-        return nullptr;
+        return std::make_unique<bitwise::ast::ExpressionStmt>(std::move(lhs));
     }
 
     diags_.report(bitwise::common::DiagnosticLevel::Error, "unknown", peek().line, peek().column, "Unexpected token in statement: " + std::string(peek().lexeme));
@@ -125,10 +137,14 @@ std::unique_ptr<bitwise::ast::Expr> Parser::parse_expression() {
 
 int get_precedence(TokenType type) {
     switch (type) {
-        case TokenType::Plus: case TokenType::Minus: return 10;
-        case TokenType::Star: case TokenType::Slash: return 20;
-        case TokenType::EqualEqual: case TokenType::BangEqual: return 5;
-        case TokenType::Less: case TokenType::Greater: return 5;
+        case TokenType::Pipe: return 5;
+        case TokenType::Caret: return 6;
+        case TokenType::Ampersand: return 7;
+        case TokenType::EqualEqual: case TokenType::BangEqual: return 8;
+        case TokenType::Less: case TokenType::Greater: case TokenType::LessEqual: case TokenType::GreaterEqual: return 9;
+        case TokenType::LShift: case TokenType::RShift: return 10;
+        case TokenType::Plus: case TokenType::Minus: return 11;
+        case TokenType::Star: case TokenType::Slash: return 12;
         default: return -1;
     }
 }
@@ -149,7 +165,18 @@ std::unique_ptr<bitwise::ast::Expr> Parser::parse_binary(int min_precedence) {
 }
 
 std::unique_ptr<bitwise::ast::Expr> Parser::parse_unary() {
-    // For now, only primary expressions. Unary ops (!, -) can be added here.
+    if (match({TokenType::Minus})) {
+        auto operand = parse_unary();
+        return std::make_unique<bitwise::ast::UnaryExpr>(bitwise::frontend::Token(TokenType::Minus, "-", 0, 0), std::move(operand));
+    }
+    if (match({TokenType::Bang})) {
+        auto operand = parse_unary();
+        return std::make_unique<bitwise::ast::UnaryExpr>(bitwise::frontend::Token(TokenType::Bang, "!", 0, 0), std::move(operand));
+    }
+    if (match({TokenType::Tilde})) {
+        auto operand = parse_unary();
+        return std::make_unique<bitwise::ast::UnaryExpr>(bitwise::frontend::Token(TokenType::Tilde, "~", 0, 0), std::move(operand));
+    }
     return parse_primary();
 }
 

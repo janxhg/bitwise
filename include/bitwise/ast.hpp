@@ -41,6 +41,15 @@ public:
         : left(std::move(l)), op(std::move(o)), right(std::move(r)) {}
 };
 
+class UnaryExpr : public Expr {
+public:
+    bitwise::frontend::Token op;
+    std::unique_ptr<Expr> operand;
+
+    UnaryExpr(bitwise::frontend::Token o, std::unique_ptr<Expr> operand)
+        : op(std::move(o)), operand(std::move(operand)) {}
+};
+
 class VariableExpr : public Expr {
 public:
     std::string name;
@@ -107,6 +116,14 @@ public:
 
     AssignmentStmt(std::unique_ptr<Expr> t, std::unique_ptr<Expr> v)
         : target(std::move(t)), value(std::move(v)) {}
+};
+
+class ExpressionStmt : public Stmt {
+public:
+    std::unique_ptr<Expr> expression;
+
+    explicit ExpressionStmt(std::unique_ptr<Expr> e)
+        : expression(std::move(e)) {}
 };
 
 class WhileStmt : public Stmt {

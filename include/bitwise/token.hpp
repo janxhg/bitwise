@@ -20,7 +20,7 @@ enum class TokenType {
     Plus, Minus, Star, Slash, Equal, EqualEqual, Bang, BangEqual,
     Less, LessEqual, Greater, GreaterEqual, 
     Ampersand, Pipe, Tilde, LShift, RShift,
-    Arrow, // ->
+    Arrow, Caret, // ->, ^
     
     // Punctuation
     OpenParen, CloseParen, OpenBrace, CloseBrace, OpenBracket, CloseBracket,

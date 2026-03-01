@@ -2,11 +2,13 @@
 
 #include "bitwise/ast.hpp"
 #include "bitwise/bir.hpp"
+#include "bitwise/diagnostic.hpp"
 
 namespace bitwise::bir {
 
 class BIRGenerator {
 public:
+    BIRGenerator(bitwise::common::DiagnosticEngine* diags = nullptr) : diags_(diags) {}
     std::unique_ptr<Module> generate(const bitwise::ast::Program& program);
 
 private:
@@ -16,6 +18,7 @@ private:
 
     int next_reg_ = 0;
     std::string new_reg() { return "%r" + std::to_string(next_reg_++); }
+    bitwise::common::DiagnosticEngine* diags_ = nullptr;
 };
 
 } // namespace bitwise::bir

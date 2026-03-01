@@ -45,11 +45,50 @@ void NanoBackend::emit_instruction(const bitwise::bir::Instruction& inst, std::o
         case bitwise::bir::OpCode::Sub:
             out << "SUB " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
             break;
+        case bitwise::bir::OpCode::Mul:
+            out << "MUL " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
+            break;
+        case bitwise::bir::OpCode::Div:
+            out << "DIV " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
+            break;
+        case bitwise::bir::OpCode::Mod:
+            out << "MOD " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
+            break;
+        case bitwise::bir::OpCode::BitAnd:
+            out << "AND " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
+            break;
+        case bitwise::bir::OpCode::BitOr:
+            out << "ORR " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
+            break;
+        case bitwise::bir::OpCode::BitXor:
+            out << "EOR " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
+            break;
+        case bitwise::bir::OpCode::BitNot:
+            out << "MVN " << inst.result << ", " << inst.args[0] << "\n";
+            break;
+        case bitwise::bir::OpCode::Neg:
+            out << "NEG " << inst.result << ", " << inst.args[0] << "\n";
+            break;
+        case bitwise::bir::OpCode::Not:
+            out << "NOT " << inst.result << ", " << inst.args[0] << "\n";
+            break;
+        case bitwise::bir::OpCode::ShiftLeft:
+            out << "LSL " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
+            break;
+        case bitwise::bir::OpCode::ShiftRight:
+            out << "LSR " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
+            break;
         case bitwise::bir::OpCode::CmpLT:
             out << "SLT " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
             break;
         case bitwise::bir::OpCode::CmpGT:
             out << "SGT " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
+            break;
+        case bitwise::bir::OpCode::CmpLE:
+            out << "SLE " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
+            break;
+        case bitwise::bir::OpCode::CmpGE:
+            out << "SGE " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";
             break;
         case bitwise::bir::OpCode::CmpEQ:
             out << "SEQ " << inst.result << ", " << inst.args[0] << ", " << inst.args[1] << "\n";

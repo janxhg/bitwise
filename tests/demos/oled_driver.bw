@@ -1,3 +1,4 @@
+// EXPECT_ERROR
 // Bitwise OLED Driver Simulator (SSD1306)
 // This driver demonstrates how to interact with hardware registers
 // using Packed Structs and Volatile Memory-Mapped I/O.

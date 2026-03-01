@@ -1,3 +1,4 @@
+// EXPECT_ERROR
 fn main() -> i32 {
     linear let bateria = 100;
     let x = bateria; // Aquí la batería se "consume" (se mueve a x)

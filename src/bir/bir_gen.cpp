@@ -122,14 +122,43 @@ std::string BIRGenerator::lower_expression(const bitwise::ast::Expr& expr, Funct
         switch (binary_expr->op.type) {
             case bitwise::frontend::TokenType::Plus: op = OpCode::Add; break;
             case bitwise::frontend::TokenType::Minus: op = OpCode::Sub; break;
+            case bitwise::frontend::TokenType::Star: op = OpCode::Mul; break;
+            case bitwise::frontend::TokenType::Slash: op = OpCode::Div; break;
             case bitwise::frontend::TokenType::Less: op = OpCode::CmpLT; break;
             case bitwise::frontend::TokenType::Greater: op = OpCode::CmpGT; break;
+            case bitwise::frontend::TokenType::LessEqual: op = OpCode::CmpLE; break;
+            case bitwise::frontend::TokenType::GreaterEqual: op = OpCode::CmpGE; break;
             case bitwise::frontend::TokenType::EqualEqual: op = OpCode::CmpEQ; break;
             case bitwise::frontend::TokenType::BangEqual: op = OpCode::CmpNE; break;
-            default: break; 
+            case bitwise::frontend::TokenType::Ampersand: op = OpCode::BitAnd; break;
+            case bitwise::frontend::TokenType::Pipe: op = OpCode::BitOr; break;
+            case bitwise::frontend::TokenType::Caret: op = OpCode::BitXor; break;
+            case bitwise::frontend::TokenType::LShift: op = OpCode::ShiftLeft; break;
+            case bitwise::frontend::TokenType::RShift: op = OpCode::ShiftRight; break;
+            default: 
+                if (diags_) diags_->report(bitwise::common::DiagnosticLevel::Error, "bir_gen", 0, 0, 
+                    "Unsupported operator in expression");
+                break;
         }
         
         bir_func.blocks.back()->instructions.emplace_back(op, std::vector<std::string>{lhs, rhs}, res);
+        return res;
+    }
+    
+    if (auto* unary_expr = dynamic_cast<const bitwise::ast::UnaryExpr*>(&expr)) {
+        std::string operand_reg = lower_expression(*unary_expr->operand, bir_func);
+        std::string res = new_reg();
+        OpCode op = OpCode::Add; // Default
+        
+        switch (unary_expr->op.type) {
+            case bitwise::frontend::TokenType::Minus: op = OpCode::Neg; break;
+            case bitwise::frontend::TokenType::Bang: op = OpCode::Not; break;
+            case bitwise::frontend::TokenType::Tilde: op = OpCode::BitNot; break;
+            default:
+                break;
+        }
+        
+        bir_func.blocks.back()->instructions.emplace_back(op, std::vector<std::string>{operand_reg}, res);
         return res;
     }
     

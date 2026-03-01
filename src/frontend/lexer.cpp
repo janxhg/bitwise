@@ -1,6 +1,7 @@
 #include "bitwise/lexer.hpp"
 #include <unordered_map>
 #include <cctype>
+#include <iostream>
 
 namespace bitwise::frontend {
 
@@ -53,7 +54,10 @@ void Lexer::scan_token() {
 
         case '+': tokens_.emplace_back(TokenType::Plus, "+", line_, start_column_); break;
         case '<': 
-            if (peek() == '=') {
+            if (peek() == '<') {
+                advance();
+                tokens_.emplace_back(TokenType::LShift, "<<", line_, start_column_);
+            } else if (peek() == '=') {
                 advance();
                 tokens_.emplace_back(TokenType::LessEqual, "<=", line_, start_column_);
             } else {
@@ -61,7 +65,10 @@ void Lexer::scan_token() {
             }
             break;
         case '>':
-            if (peek() == '=') {
+            if (peek() == '>') {
+                advance();
+                tokens_.emplace_back(TokenType::RShift, ">>", line_, start_column_);
+            } else if (peek() == '=') {
                 advance();
                 tokens_.emplace_back(TokenType::GreaterEqual, ">=", line_, start_column_);
             } else {
@@ -85,6 +92,25 @@ void Lexer::scan_token() {
                 tokens_.emplace_back(TokenType::Slash, "/", line_, start_column_); 
             }
             break;
+
+        case '&':
+            if (peek() == '&') {
+                advance();
+                tokens_.emplace_back(TokenType::Ampersand, "&&", line_, start_column_);
+            } else {
+                tokens_.emplace_back(TokenType::Ampersand, "&", line_, start_column_);
+            }
+            break;
+        case '|':
+            if (peek() == '|') {
+                advance();
+                tokens_.emplace_back(TokenType::Pipe, "||", line_, start_column_);
+            } else {
+                tokens_.emplace_back(TokenType::Pipe, "|", line_, start_column_);
+            }
+            break;
+        case '^': tokens_.emplace_back(TokenType::Caret, "^", line_, start_column_); break;
+        case '~': tokens_.emplace_back(TokenType::Tilde, "~", line_, start_column_); break;
 
         case '=':
             if (peek() == '=') {
@@ -120,7 +146,8 @@ void Lexer::scan_token() {
             } else if (std::isalpha(c) || c == '_') {
                 scan_identifier();
             } else {
-                // TODO: Report invalid character via diagnostic
+                // Report invalid character via diagnostic
+                std::cerr << "[ERROR] Invalid character '" << c << "' at line " << line_ << ", column " << column_ << "\n";
             }
             break;
     }
