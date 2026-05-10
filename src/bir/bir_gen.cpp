@@ -3,6 +3,18 @@
 namespace bitwise::bir {
 
 std::unique_ptr<Module> BIRGenerator::generate(const bitwise::ast::Program& program) {
+    // Calculate struct field offsets globally
+    for (const auto& s : program.structs) {
+        int offset = 0;
+        for (const auto& f : s->fields) {
+            field_offsets_[f.name] = offset;
+            if (f.type == "i32" || f.type == "u32") offset += 4;
+            else if (f.type == "i16" || f.type == "u16") offset += 2;
+            else if (f.type == "i8" || f.type == "u8") offset += 1;
+            else offset += 4; // Default
+        }
+    }
+
     auto module = std::make_unique<Module>();
     for (const auto& func : program.functions) {
         module->functions.push_back(lower_function(*func));
@@ -81,7 +93,8 @@ void BIRGenerator::lower_statement(const bitwise::ast::Stmt& stmt, Function& bir
             block.instructions.emplace_back(OpCode::StoreVar, std::vector<std::string>{rhs}, var_expr->name);
         } else if (auto* member_expr = dynamic_cast<const bitwise::ast::MemberExpr*>(assign_stmt->target.get())) {
              std::string obj_reg = lower_expression(*member_expr->object, bir_func);
-             block.instructions.emplace_back(OpCode::StoreMember, std::vector<std::string>{rhs, obj_reg, member_expr->member_name});
+             std::string offset_str = std::to_string(field_offsets_[member_expr->member_name]);
+             block.instructions.emplace_back(OpCode::StoreMember, std::vector<std::string>{rhs, obj_reg, offset_str});
         }
     }
     else if (auto* while_stmt = dynamic_cast<const bitwise::ast::WhileStmt*>(&stmt)) {
@@ -171,7 +184,8 @@ std::string BIRGenerator::lower_expression(const bitwise::ast::Expr& expr, Funct
     if (auto* member_expr = dynamic_cast<const bitwise::ast::MemberExpr*>(&expr)) {
         std::string obj_reg = lower_expression(*member_expr->object, bir_func);
         std::string res = new_reg();
-        block.instructions.emplace_back(OpCode::LoadMember, std::vector<std::string>{obj_reg, member_expr->member_name}, res);
+        std::string offset_str = std::to_string(field_offsets_[member_expr->member_name]);
+        block.instructions.emplace_back(OpCode::LoadMember, std::vector<std::string>{obj_reg, offset_str}, res);
         return res;
     }
     

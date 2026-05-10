@@ -8,20 +8,39 @@ void ArmBackend::emit(const bitwise::bir::Module& module, std::ostream& out) {
     out << ".cpu cortex-m4\n";
     out << ".thumb\n\n";
 
+    bool has_main = false;
+    for (const auto& func : module.functions) {
+        if (func->name == "main") {
+            has_main = true;
+            break;
+        }
+    }
+
+    if (has_main) {
+        out << ".global _start\n";
+        out << ".type _start, %function\n";
+        out << "_start:\n";
+        out << "  BL main\n";
+        out << "_exit_loop:\n";
+        out << "  B _exit_loop\n\n";
+    }
+
     for (const auto& func : module.functions) {
         emit_function(*func, out);
     }
 }
 
 void ArmBackend::emit_function(const bitwise::bir::Function& func, std::ostream& out) {
+    var_regs_.clear();
+    next_var_reg_ = 4; // Start assigning named vars from r4
+
     out << ".global " << func.name << "\n";
     out << ".type " << func.name << ", %function\n";
     out << func.name << ":\n";
-    out << "  PUSH {r7, lr}\n";
+    out << "  PUSH {r4-r11, lr}\n";
     out << "  ADD r7, sp, #0\n";
     
     // Simple stack spill area for virtual regs
-    // In a real compiler, we would analyze stack usage.
     out << "  SUB sp, sp, #64\n"; 
 
     for (const auto& block : func.blocks) {
@@ -35,9 +54,9 @@ void ArmBackend::emit_function(const bitwise::bir::Function& func, std::ostream&
         }
     }
     
-    // Function epilogue (should be unreachable if RET is used, but good safety)
+    // Function epilogue
     out << "  ADD sp, r7, #0\n"; 
-    out << "  POP {r7, pc}\n\n";
+    out << "  POP {r4-r11, pc}\n\n";
 }
 
 void ArmBackend::emit_instruction(const bitwise::bir::Instruction& inst, std::ostream& out) {
@@ -225,7 +244,7 @@ void ArmBackend::emit_instruction(const bitwise::bir::Instruction& inst, std::os
                 out << "MOV r0, " << get_op(0) << "\n";
             }
             out << "ADD sp, r7, #0\n";
-            out << "POP {r7, pc}\n";
+            out << "POP {r4-r11, pc}\n";
             break;
             
         default:
@@ -235,26 +254,27 @@ void ArmBackend::emit_instruction(const bitwise::bir::Instruction& inst, std::os
 }
 
 std::string ArmBackend::map_reg(const std::string& virtual_reg) {
-    // Basic hash mapping to R0-R6
-    // R7 is Frame Pointer, R13 SP, R14 LR, R15 PC
-    // We leave R0-R6 mostly free.
-    
-    // Simple direct mapping for demo:
-    // %r0 -> r0
-    // %r1 -> r1 ...
-    
     if (virtual_reg.empty()) return "r0";
     
-    // Check if it is a number register %r123
+    // Check if it is a temporary register %r123
     if (virtual_reg[0] == '%' && virtual_reg[1] == 'r') {
         int reg_num = std::stoi(virtual_reg.substr(2));
-        return "r" + std::to_string(reg_num % 7); // Reuse r0-r6 cyclically
+        // Use caller-saved scratch registers: r0, r1, r2, r3, r12
+        int scratch_regs[] = {0, 1, 2, 3, 12};
+        return "r" + std::to_string(scratch_regs[reg_num % 5]); 
     }
     
-    // Named variables -> Hash to register
-    size_t hash = 0;
-    for(char c : virtual_reg) hash = hash * 31 + c;
-    return "r" + std::to_string(hash % 7);
+    // Named variables -> Allocate sequentially to r4-r11
+    if (var_regs_.find(virtual_reg) == var_regs_.end()) {
+        if (next_var_reg_ <= 11) {
+            var_regs_[virtual_reg] = "r" + std::to_string(next_var_reg_++);
+        } else {
+            // Fallback if we run out of r4-r11. Just reuse r11 for now in this demo
+            var_regs_[virtual_reg] = "r11";
+        }
+    }
+    
+    return var_regs_[virtual_reg];
 }
 
 } // namespace bitwise::backend

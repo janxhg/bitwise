@@ -1,0 +1,92 @@
+packed struct TestStruct {
+    a: u8;
+    b: i32;
+    c: u16;
+}
+
+fn test_arithmetic() -> i32 {
+    let a = 10;
+    let b = 2;
+    let c = a + b;
+    c = c - 1;
+    c = c * 2;
+    // Division and Modulo are not supported without runtime in ARM, skip to avoid linker errors in baremetal test
+    return c; // 11 * 2 = 22
+}
+
+fn test_bitwise() -> i32 {
+    let a = 10; // 10 
+    let b = 12; // 12 
+    let and_res = a & b; // 8
+    let or_res = a | b; // 14
+    let xor_res = a ^ b; // 6
+    let not_res = ~a; // -11
+    let lsh = a << 1; // 20
+    let rsh = a >> 1; // 5
+    return and_res + or_res + xor_res; // 8 + 14 + 6 = 28
+}
+
+fn test_control_flow() -> i32 {
+    let x = 0;
+    if x == 0 {
+        x = 1;
+    } else {
+        x = 2;
+    }
+
+    if x != 1 {
+        x = 3;
+    }
+
+    let i = 0;
+    let sum = 0;
+    while i < 5 {
+        sum = sum + i;
+        i = i + 1;
+    }
+
+    return sum + x; // 10 + 1 = 11
+}
+
+fn test_memory() -> i32 {
+    let base = 0x20000000;
+    volatile let ptr = base;
+    ptr = 42;
+    let val = ptr;
+    
+    // Struct testing (simulated by pointer offsets)
+    let s_ptr = base + 4;
+    s_ptr.a = 1; // offset 0
+    s_ptr.b = 100; // offset 1 (because a is u8, wait, the offset is 1 based on our new logic in bir_gen)
+    s_ptr.c = 200; // offset 5
+    
+    return val + s_ptr.a;
+}
+
+fn test_comparisons() -> i32 {
+    let a = 10;
+    let b = 20;
+    let res = 0;
+    if a < b { res = res + 1; }
+    if b > a { res = res + 1; }
+    if a <= 10 { res = res + 1; }
+    if b >= 20 { res = res + 1; }
+    return res; // 4
+}
+
+fn main() -> i32 {
+    let res1 = test_arithmetic();
+    let res2 = test_bitwise();
+    let res3 = test_control_flow();
+    let res4 = test_memory();
+    let res5 = test_comparisons();
+    
+    let total = res1 + res2 + res3 + res4 + res5;
+    
+    // Infinite loop for baremetal
+    let x = 1;
+    while x == 1 {
+        x = 1;
+    }
+    return total;
+}

@@ -3,6 +3,7 @@
 #include "bitwise/ast.hpp"
 #include "bitwise/bir.hpp"
 #include "bitwise/diagnostic.hpp"
+#include <unordered_map>
 
 namespace bitwise::bir {
 
@@ -19,6 +20,7 @@ private:
     int next_reg_ = 0;
     std::string new_reg() { return "%r" + std::to_string(next_reg_++); }
     bitwise::common::DiagnosticEngine* diags_ = nullptr;
+    std::unordered_map<std::string, int> field_offsets_;
 };
 
 } // namespace bitwise::bir
